@@ -16,6 +16,7 @@ import hudson.util.Secret;
 import jenkins.model.Jenkins;
 import jenkins.plugins.hipchat.HipChatNotifier;
 import jenkins.plugins.hipchat.HipChatService;
+import jenkins.plugins.hipchat.HipChatUtils;
 import jenkins.plugins.hipchat.Messages;
 import jenkins.plugins.hipchat.exceptions.NotificationException;
 import jenkins.plugins.hipchat.model.Color;
@@ -56,6 +57,12 @@ public class HipChatSendStep extends AbstractStepImpl {
 
     @DataBoundSetter
     public String room;
+
+    @DataBoundSetter
+    public String user;
+
+    @DataBoundSetter
+    public Boolean sendToCurrentUser;
 
     @DataBoundSetter
     public String server;
@@ -136,6 +143,11 @@ public class HipChatSendStep extends AbstractStepImpl {
                     Jenkins.getInstance().getDescriptorByType(HipChatNotifier.DescriptorImpl.class);
 
             String room = firstNonEmpty(step.room, hipChatDesc.getRoom());
+            String user = firstNonEmpty(step.user, hipChatDesc.getUser());
+            boolean sendToCurrentUser = step.sendToCurrentUser != null ? step.sendToCurrentUser : hipChatDesc.isSendToCurrentUser();
+            if(sendToCurrentUser) {
+            	user = HipChatUtils.appendCurrentUser(user, run);
+            }
             String server = firstNonEmpty(step.server, hipChatDesc.getServer());
             String sendAs = firstNonEmpty(step.sendAs, hipChatDesc.getSendAs());
             String credentialId = step.credentialId;
@@ -158,7 +170,7 @@ public class HipChatSendStep extends AbstractStepImpl {
             Color color = step.color != null ? step.color : Color.GRAY;
             boolean v2enabled = step.v2enabled != null ? step.v2enabled : hipChatDesc.isV2Enabled();
 
-            HipChatService hipChatService = HipChatNotifier.getHipChatService(server, token, v2enabled, room, sendAs);
+            HipChatService hipChatService = HipChatNotifier.getHipChatService(server, token, v2enabled, room, user, sendAs);
 
             logger.log(Level.FINER, "HipChat publish settings: api v2 - {0} server - {1} token - {2} room - {3}",
                     new Object[]{v2enabled, server, token, room});
@@ -167,8 +179,9 @@ public class HipChatSendStep extends AbstractStepImpl {
             try {
                 String message = Util.replaceMacro(step.message,
                         buildUtils.collectParametersFor(Jenkins.getInstance(), run));
+                listener.getLogger().println(Messages.SendingNotification(room, user));
                 hipChatService.publish(message, color.toString(), step.notify, step.textFormat);
-                listener.getLogger().println(Messages.NotificationSuccessful(room));
+                listener.getLogger().println(Messages.NotificationSuccessful(room, user));
             } catch (NotificationException ne) {
                 listener.getLogger().println(Messages.NotificationFailed(ne.getMessage()));
                 //allow entire run to fail based on failOnError field

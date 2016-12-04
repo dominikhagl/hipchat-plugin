@@ -1,0 +1,9 @@
+<div>
+    <p>Send notifications to the currently active user. This can be the currently logged user or the user
+    which started a build. In case of automatically triggered builds no message will be send.</p>
+    <p>The HipChat username will be automatically derived by the full name of the Jenkins user in the same
+    way HipChat created it's default mention names, i.e. by removing all spaces and prepending an @. E.g. 
+    the notification for the Jenkins user "Foo Bar" will be send to "@FooBar".</p>
+    <p>This user always gets notified last in case the mention name could not be derived correctly and the
+    API call fails. This way at least all other rooms and users get notified.</p>
+</div>

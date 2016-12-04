@@ -97,6 +97,8 @@ public class HipChatNotifier extends Notifier implements MatrixAggregatable {
     private transient boolean notifyBackToNormal;
     private String credentialId;
     private String room;
+    private String user;
+    private boolean sendToCurrentUser;
     private List<NotificationConfig> notifications;
     private MatrixTriggerMode matrixTriggerMode;
 
@@ -104,10 +106,13 @@ public class HipChatNotifier extends Notifier implements MatrixAggregatable {
     private String completeJobMessage;
 
     @DataBoundConstructor
-    public HipChatNotifier(String credentialId, String room, List<NotificationConfig> notifications,
-            MatrixTriggerMode matrixTriggerMode, String startJobMessage, String completeJobMessage) {
+    public HipChatNotifier(String credentialId, String room, String user, boolean sendToCurrentUser,
+    		List<NotificationConfig> notifications, MatrixTriggerMode matrixTriggerMode, String startJobMessage,
+    		String completeJobMessage) {
         this.credentialId = credentialId;
         this.room = room;
+        this.user = user;
+        this.sendToCurrentUser = sendToCurrentUser;
         this.notifications = notifications;
         this.matrixTriggerMode = matrixTriggerMode;
 
@@ -192,7 +197,19 @@ public class HipChatNotifier extends Notifier implements MatrixAggregatable {
         this.room = room;
     }
 
-    public Object readResolve() {
+    public String getUser() {
+		return user;
+	}
+
+	public void setUser(String user) {
+		this.user = user;
+	}
+
+	public void setSendToCurrentUser(boolean sendToCurrentUser) {
+		this.sendToCurrentUser = sendToCurrentUser;
+	}
+
+	public Object readResolve() {
         if (notifications == null) {
             notifications = new ArrayList<NotificationConfig>(7);
             if (startNotification) {
@@ -231,6 +248,19 @@ public class HipChatNotifier extends Notifier implements MatrixAggregatable {
     public String getResolvedRoom(AbstractBuild<?, ?> build) {
         return Util.replaceMacro(StringUtils.isBlank(room) ? getDescriptor().getRoom() : room,
                 build.getBuildVariableResolver());
+    }
+    
+    public String getResolvedUser(AbstractBuild<?, ?> build) {
+    	String users = Util.replaceMacro(StringUtils.isBlank(user) ? getDescriptor().getUser() : user,
+    			build.getBuildVariableResolver());
+    	if(isSendToCurrentUser()) {
+    		users = HipChatUtils.appendCurrentUser(users, build);
+    	}
+    	return users;
+    }
+    
+    public boolean isSendToCurrentUser() {
+    	return sendToCurrentUser ? true : getDescriptor().isSendToCurrentUser();
     }
 
     public String getToken() {
@@ -306,8 +336,9 @@ public class HipChatNotifier extends Notifier implements MatrixAggregatable {
             }
 
             try {
+            	listener.getLogger().println(Messages.SendingNotification(getResolvedRoom(build), getResolvedUser(build)));
                 getHipChatService(build).publish(notificationConfig, notificationType.getMessage(build, messageTemplate));
-                listener.getLogger().println(Messages.NotificationSuccessful(getResolvedRoom(build)));
+                listener.getLogger().println(Messages.NotificationSuccessful(getResolvedRoom(build), getResolvedUser(build)));
             } catch (NotificationException ne) {
                 listener.getLogger().println(Messages.NotificationFailed(ne.getMessage()));
             }
@@ -333,7 +364,7 @@ public class HipChatNotifier extends Notifier implements MatrixAggregatable {
             throw new NotificationException(Messages.CredentialMissing(credentialId));
         }
         return getHipChatService(desc.getServer(), Secret.toString(credentials.getSecret()), desc.isV2Enabled(),
-                getResolvedRoom(build), desc.getSendAs());
+                getResolvedRoom(build), getResolvedUser(build), desc.getSendAs());
     }
 
     /**
@@ -347,9 +378,9 @@ public class HipChatNotifier extends Notifier implements MatrixAggregatable {
      * @return An API version specific {@link HipChatService} instance.
      */
     public static HipChatService getHipChatService(String server, String token, boolean v2Enabled, String room,
-            String sendAs) {
+            String user, String sendAs) {
         if (v2Enabled) {
-            return new HipChatV2Service(server, token, room);
+            return new HipChatV2Service(server, token, room, user);
         } else {
             return new HipChatV1Service(server, token, room, sendAs);
         }
@@ -389,6 +420,8 @@ public class HipChatNotifier extends Notifier implements MatrixAggregatable {
         private String credentialId;
         private boolean v2Enabled = false;
         private String room;
+        private String user;
+        private boolean sendToCurrentUser;
         private String sendAs = "Jenkins";
         private List<NotificationConfig> defaultNotifications;
         private static int testNotificationCount = 0;
@@ -444,7 +477,23 @@ public class HipChatNotifier extends Notifier implements MatrixAggregatable {
             this.room = room;
         }
 
-        public String getSendAs() {
+        public String getUser() {
+			return user;
+		}
+
+		public void setUser(String user) {
+			this.user = user;
+		}
+
+		public boolean isSendToCurrentUser() {
+			return sendToCurrentUser;
+		}
+
+		public void setSendToCurrentUser(boolean sendToCurrentUser) {
+			this.sendToCurrentUser = sendToCurrentUser;
+		}
+
+		public String getSendAs() {
             return sendAs;
         }
 
@@ -498,13 +547,17 @@ public class HipChatNotifier extends Notifier implements MatrixAggregatable {
 
         public FormValidation doSendTestNotification(@AncestorInPath AbstractProject<?, ?> context,
                 @QueryParameter String server, @QueryParameter String credentialId, @QueryParameter boolean v2Enabled,
-                @QueryParameter String room, @QueryParameter String sendAs) {
+                @QueryParameter String room, @QueryParameter String user, @QueryParameter boolean sendToCurrentUser,
+                @QueryParameter String sendAs) {
             StringCredentials credentials = get(CredentialUtils.class).resolveCredential(context, credentialId, server);
             if (credentials == null) {
                 return FormValidation.error(Messages.CredentialMissing(credentialId));
             }
+            if(sendToCurrentUser) {
+            	user = HipChatUtils.appendCurrentUser(user, null);
+            }
             HipChatService service = getHipChatService(server, Secret.toString(credentials.getSecret()),
-                    v2Enabled, room, sendAs);
+                    v2Enabled, room, user, sendAs);
             try {
                 service.publish(Messages.TestNotification(++testNotificationCount), "yellow", true);
                 return FormValidation.ok(Messages.TestNotificationSent());

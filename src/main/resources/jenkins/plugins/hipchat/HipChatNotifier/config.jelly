@@ -6,6 +6,12 @@
     <f:entry title="${%Project Room}" help="/plugin/hipchat/help-projectConfig-hipChatRoom.html">
         <f:textbox name="hipchat.room" value="${instance.room}" />
     </f:entry>
+    <f:entry title="${%Project User}" help="/plugin/hipchat/help-projectConfig-hipChatUser.html">
+        <f:textbox name="hipchat.user" value="${instance.user}" />
+    </f:entry>
+    <f:entry title="${%Send To Current User}" help="/plugin/hipchat/help-projectConfig-hipChatSendToCurrentUser.html">
+        <f:checkbox name="hipchat.sendToCurrentUser" checked="${instance.sendToCurrentUser}" />
+    </f:entry>
 
     <j:if test="${descriptor.isMatrixProject(it)}">
         <f:entry title="${%Trigger for matrix projects}" field="matrixTriggerMode">

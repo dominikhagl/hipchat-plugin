@@ -26,6 +26,12 @@
         <f:entry field="room" title="${%Room}">
             <f:textbox />
         </f:entry>
+        <f:entry field="user" title="${%User}">
+            <f:textbox />
+        </f:entry>
+        <f:entry field="sendToCurrentUser">
+            <f:checkbox title="${%Send To Current User}" default="true" />
+        </f:entry>
         <f:entry field="sendAs" title="${%Send As}">
             <f:textbox />
         </f:entry>

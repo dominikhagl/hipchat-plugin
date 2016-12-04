@@ -12,6 +12,12 @@
         <f:entry title="${%Room}" help="/plugin/hipchat/help-globalConfig-hipChatRoom.html" field="room">
             <f:textbox />
         </f:entry>
+        <f:entry title="${%User}" help="/plugin/hipchat/help-globalConfig-hipChatUser.html" field="user">
+            <f:textbox />
+        </f:entry>
+        <f:entry title="${%Send To Current User}" help="/plugin/hipchat/help-globalConfig-hipChatSendToCurrentUser.html" field="sendToCurrentUser">
+            <f:checkbox />
+        </f:entry>
         <f:entry title="${%Send As}" help="/plugin/hipchat/help-globalConfig-hipChatSendAs.html" field="sendAs">
             <f:textbox default="Jenkins" />
         </f:entry>
@@ -33,6 +39,6 @@
             </f:repeatable>
         </f:entry>
         <f:validateButton method="sendTestNotification" title="${%Test configuration}" progress="${%Testing...}"
-                          with="server,credentialId,v2Enabled,room,sendAs" />
+                          with="server,credentialId,v2Enabled,room,user,sendToCurrentUser,sendAs" />
     </f:section>
 </j:jelly>
